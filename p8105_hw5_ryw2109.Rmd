@@ -1,0 +1,25 @@
+---
+title: "p8105_hw5_ryw2109"
+author: "Rita Wang"
+date: "2024-11-15"
+output: github_document
+---
+
+```{r default_setting, echo = FALSE, message = FALSE, warning = FALSE, results = 'hide'}
+library(tidyverse)
+library(ggplot2)
+library(broom)
+library(purrr)
+```
+
+```{r q1_a, echo = FALSE, message = FALSE, warning = FALSE}
+
+```
+
+```{r q2_a, echo = FALSE, message = FALSE, warning = FALSE}
+
+```
+
+```{r q3_a, echo = FALSE, message = FALSE, warning = FALSE}
+
+```
