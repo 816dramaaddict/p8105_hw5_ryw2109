@@ -8,7 +8,6 @@ output: github_document
 ```{r default_setting, echo = FALSE, message = FALSE, warning = FALSE, results = 'hide'}
 library(tidyverse)
 library(ggplot2)
-library(broom)
 library(purrr)
 
 knitr::opts_chunk$set(
@@ -136,5 +135,60 @@ plot
 
 The sample average 𝜇 across tests for which the null is rejected is not approximately equal to the true value of 𝜇. This may be due to sample variability and Type I error.
 ```{r q3_a, echo = FALSE, message = FALSE, warning = FALSE}
+  # importing data
+url = "https://raw.githubusercontent.com/washingtonpost/data-homicides/refs/heads/master/homicide-data.csv"
+data_original = read.csv(url) %>% 
+  janitor::clean_names()
 
+data_original
+
+# Assuming the dataset has columns 'city', 'state', 'disposition', and 'homicide_id'
+# If the dataset is already in your environment, move to step 2.
+
+# 2. Create a new city_state variable (city + state)
+homicide_data <- homicide_data %>%
+  mutate(city_state = paste(city, state, sep = ", "))
+
+# 3. Summarize within cities to get total homicides and unsolved homicides
+city_summary <- homicide_data %>%
+  group_by(city_state) %>%
+  summarise(
+    total_homicides = n(),
+    unsolved_homicides = sum(disposition %in% c("Closed without arrest", "Open/No arrest")),
+    .groups = "drop"
+  )
+
+# 4. Estimate the proportion of unsolved homicides for Baltimore, MD
+baltimore_data <- city_summary %>% filter(city_state == "Baltimore, MD")
+prop_test_baltimore <- prop.test(baltimore_data$unsolved_homicides, baltimore_data$total_homicides)
+
+# Tidy the prop.test output and extract the proportion and confidence intervals
+baltimore_prop <- tidy(prop_test_baltimore) %>%
+  select(estimate, conf.low, conf.high)
+
+# 5. Run prop.test for each city and extract proportions and confidence intervals
+city_props <- city_summary %>%
+  pmap_dfr(function(city, total, unsolved) {
+    prop_test <- prop.test(unsolved, total)
+    tidy_result <- tidy(prop_test)
+    
+    data.frame(
+      city_state = city,
+      estimate = tidy_result$estimate,
+      conf.low = tidy_result$conf.low,
+      conf.high = tidy_result$conf.high
+    )
+  })
+
+# 6. Create a plot showing estimates and CIs for each city
+ggplot(city_props, aes(x = reorder(city_state, estimate), y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
+  labs(
+    title = "Proportion of Unsolved Homicides by City",
+    x = "City",
+    y = "Proportion of Unsolved Homicides"
+  ) +
+  coord_flip() +  # Flip coordinates to make the plot more readable
+  theme_minimal()
 ```
