@@ -137,13 +137,16 @@ The sample average 𝜇 across tests for which the null is rejected is not appro
 url = "https://raw.githubusercontent.com/washingtonpost/data-homicides/refs/heads/master/homicide-data.csv"
 
 directory = "./data"
+
+if (!dir.exists(directory)) {
+  dir.create(directory)
+}
+
 file_path = file.path(directory, "homicide-data.csv")
-download.file(url, destfile = file_path, method = "curl")
+download.file(url, destfile = file_path, method = "libcurl")
 
 data_original = read.csv(file_path) %>% 
   janitor::clean_names()
-
-data_original
 ```
 
 The data provided has a total of `r nrow(data_original)` rows and `r ncol(data_original)` columns. The dataset consists of the following data information:
