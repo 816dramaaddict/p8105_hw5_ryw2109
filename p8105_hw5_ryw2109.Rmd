@@ -58,9 +58,83 @@ ggplot(dob_data, aes(x = group_size, y = probability)) +
 Given a function that computes the probability that at least two people share a birthday for a fixed group size between 2 and 50, after running 10,000 times, the probability of shared birthdays as the group size increase is shown above.
 
 ```{r q2_a, echo = FALSE, message = FALSE, warning = FALSE}
+set.seed(1)
+
+n = 30 # Fix 𝑛=30
+sigma = 5 # Fix 𝜎=5
+alpha = 0.05
+mu_values = 0:6
+simulation = 5000 # Generate 5000 datasets from the model
+
+# For each dataset, save 𝜇̂ and the p-value arising from a test of 𝐻:𝜇=0 using 𝛼=0.05. Hint: to obtain the estimate and p-value, use broom::tidy to clean the output of t.test.
+perform_ttest = function(mu, n, sigma, simulation, alpha) {
+  results = replicate(simulation, {
+  x = rnorm(n, mean = mu, sd = sigma) # Generate dataset
+  test_result = t.test(x, mu = 0) # t-test
+  tidy_result = broom::tidy(test_result) # cleaning output of t.test
+  p_value = tidy_result$p.value
+  estimate = tidy_result$estimate # estimate of the mean
+  return(c(p_value = p_value, estimate = estimate))
+})
+
+results_df = data.frame(t(results)) # results to df
+colnames(results_df) = c("p_value", "estimate")
+  
+rejection_rate = mean(results_df$p_value < alpha) # power
+  
+avg_estimate = mean(results_df$estimate) # average estimate
+  
+return(list(rejection_rate = rejection_rate, avg_estimate = avg_estimate, results = results_df))
+}
+
+power_results = lapply(mu_values, function(mu) { # simulation
+  perform_ttest(mu, n, sigma, simulation, alpha)
+})
+
+rejection_rates = sapply(power_results, function(res) res$rejection_rate) # extracting rejection rates
+avg_estimates = sapply(power_results, function(res) res$avg_estimate) # extracting average estimates
 
 ```
 
+```{r q2_b, echo = FALSE, message = FALSE, warning = FALSE}
+power_df = data.frame(mu = mu_values, power = rejection_rates)
+
+power_plot = ggplot(power_df, aes(x = mu, y = power)) +
+  geom_line(color = "#ade8f8")
+  geom_point()
+  labs(title = "Power of the Test vs. True Mean (mu)",
+       x = "True Mean (mu)",
+       y = "Power (Proportion Rejected)")
+  
+power_plot
+```
+
+The power increases for effect sizes 0 to 4, however, for effect sizes 4 to 6, the power stayed relatively similar. The increase of power was greatest for effect size 1 to 3. With the increase in effect size, there is an increase of power, which in turn indicates higher probability of rejecting the null hypothesis.
+
+```{r q2_c, echo = FALSE, message = FALSE, warning = FALSE}
+plot_data = data.frame(
+  mu = mu_values,
+  avg_estimate = avg_estimates,
+  rejection_rates = rejection_rates
+)
+
+plot = ggplot(plot_data, aes(x = mu)) +
+      # Plot the average estimate
+  geom_line(aes(y = avg_estimate, color = "Average Estimate")) +
+  geom_point(aes(y = avg_estimate, color = "Average Estimate")) +
+      # Plot the average estimate when the null was rejected
+  
+  geom_line(aes(y = rejection_rates, color = "Rejection Rate"), linetype = "dashed") +
+  geom_point(aes(y = rejection_rates, color = "Rejection Rate")) +
+  labs(title = "Average Estimate of µ̂ vs. True µ with Rejection Condition",
+       x = "True Mean (µ)",
+       y = "Estimated Mean (µ̂)",
+       color = "Legend")
+
+plot
+```
+
+The sample average 𝜇 across tests for which the null is rejected is not approximately equal to the true value of 𝜇. This may be due to sample variability and Type I error.
 ```{r q3_a, echo = FALSE, message = FALSE, warning = FALSE}
 
 ```
