@@ -98,14 +98,13 @@ avg_estimates = sapply(power_results, function(res) res$avg_estimate) # extracti
 ```{r q2_b, echo = FALSE, message = FALSE, warning = FALSE}
 power_df = data.frame(mu = mu_values, power = rejection_rates)
 
-power_plot = ggplot(power_df, aes(x = mu, y = power)) +
+ggplot(power_df, aes(x = mu, y = power)) +
   geom_line(color = "#ade8f8")
   geom_point()
-  labs(title = "Power of the Test vs. True Mean (mu)",
-       x = "True Mean (mu)",
-       y = "Power (Proportion Rejected)")
-  
-power_plot
+  labs(
+    title = "Power of the Test vs. True Mean (mu)",
+    x = "True Mean (mu)",
+    y = "Power (Proportion Rejected)")
 ```
 
 The power increases for effect sizes 0 to 4, however, for effect sizes 4 to 6, the power stayed relatively similar. The increase of power was greatest for effect size 1 to 3. With the increase in effect size, there is an increase of power, which in turn indicates higher probability of rejecting the null hypothesis.
@@ -117,7 +116,7 @@ plot_data = data.frame(
   rejection_rates = rejection_rates
 )
 
-plot = ggplot(plot_data, aes(x = mu)) +
+ggplot(plot_data, aes(x = mu)) +
       # Plot the average estimate
   geom_line(aes(y = avg_estimate, color = "Average Estimate")) +
   geom_point(aes(y = avg_estimate, color = "Average Estimate")) +
@@ -125,70 +124,76 @@ plot = ggplot(plot_data, aes(x = mu)) +
   
   geom_line(aes(y = rejection_rates, color = "Rejection Rate"), linetype = "dashed") +
   geom_point(aes(y = rejection_rates, color = "Rejection Rate")) +
-  labs(title = "Average Estimate of µ̂ vs. True µ with Rejection Condition",
-       x = "True Mean (µ)",
-       y = "Estimated Mean (µ̂)",
-       color = "Legend")
-
-plot
+  labs(
+    title = "Average Estimate of µ̂ vs. True µ with Rejection Condition",
+    x = "True Mean (µ)",
+    y = "Estimated Mean (µ̂)",
+    color = "Legend")
 ```
 
 The sample average 𝜇 across tests for which the null is rejected is not approximately equal to the true value of 𝜇. This may be due to sample variability and Type I error.
-```{r q3_a, echo = FALSE, message = FALSE, warning = FALSE}
+```{r q3_a, echo = FALSE, message = FALSE, warning = FALSE, results = 'hide'}
   # importing data
 url = "https://raw.githubusercontent.com/washingtonpost/data-homicides/refs/heads/master/homicide-data.csv"
-data_original = read.csv(url) %>% 
+
+directory = "./data"
+file_path = file.path(directory, "homicide-data.csv")
+download.file(url, destfile = file_path, method = "curl")
+
+data_original = read.csv(file_path) %>% 
   janitor::clean_names()
 
 data_original
+```
 
-# Assuming the dataset has columns 'city', 'state', 'disposition', and 'homicide_id'
-# If the dataset is already in your environment, move to step 2.
+The data provided has a total of `r nrow(data_original)` rows and `r ncol(data_original)` columns. The dataset consists of the following data information:
 
-# 2. Create a new city_state variable (city + state)
-homicide_data <- homicide_data %>%
-  mutate(city_state = paste(city, state, sep = ", "))
+`r names(data_original)`
 
-# 3. Summarize within cities to get total homicides and unsolved homicides
-city_summary <- homicide_data %>%
+```{r q3_b, echo = FALSE, message = FALSE, warning = FALSE}
+data_df1 = data_original %>% 
+  mutate(
+    city_state = paste(city, state, sep = ", ")
+  )
+
+data_df2 = data_df1 %>%
   group_by(city_state) %>%
   summarise(
     total_homicides = n(),
     unsolved_homicides = sum(disposition %in% c("Closed without arrest", "Open/No arrest")),
     .groups = "drop"
   )
+```
 
-# 4. Estimate the proportion of unsolved homicides for Baltimore, MD
-baltimore_data <- city_summary %>% filter(city_state == "Baltimore, MD")
-prop_test_baltimore <- prop.test(baltimore_data$unsolved_homicides, baltimore_data$total_homicides)
+```{r q3_c, echo = FALSE, message = FALSE, warning = FALSE}
+md = data_df2 %>% 
+  filter(city_state == "Baltimore, MD")
 
-# Tidy the prop.test output and extract the proportion and confidence intervals
-baltimore_prop <- tidy(prop_test_baltimore) %>%
-  select(estimate, conf.low, conf.high)
+prop_test = prop.test(md$unsolved_homicides, md$total_homicides)
 
-# 5. Run prop.test for each city and extract proportions and confidence intervals
-city_props <- city_summary %>%
-  pmap_dfr(function(city, total, unsolved) {
-    prop_test <- prop.test(unsolved, total)
-    tidy_result <- tidy(prop_test)
-    
-    data.frame(
-      city_state = city,
-      estimate = tidy_result$estimate,
-      conf.low = tidy_result$conf.low,
-      conf.high = tidy_result$conf.high
-    )
-  })
+md_prop = broom::tidy(prop_test) %>% # cleaning
+  select(estimate, conf.low, conf.high) # Extracting the proportion and confidence intervals
 
-# 6. Create a plot showing estimates and CIs for each city
+city_props = data_df2 %>% # prop.test for each city
+  mutate(
+    city_prop_test = map2(unsolved_homicides,
+                             total_homicides,
+                             ~broom::tidy(prop.test(.x, .y)))
+    ) %>%
+  unnest_wider(city_prop_test) %>%
+  select(city_state, estimate, conf.low, conf.high)
+
+city_props
+```
+
+```{r q3_d, echo = FALSE, message = FALSE, warning = FALSE}
 ggplot(city_props, aes(x = reorder(city_state, estimate), y = estimate)) +
-  geom_point() +
+  geom_point(color = "orange") +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(
     title = "Proportion of Unsolved Homicides by City",
     x = "City",
     y = "Proportion of Unsolved Homicides"
-  ) +
-  coord_flip() +  # Flip coordinates to make the plot more readable
-  theme_minimal()
+  )
 ```
