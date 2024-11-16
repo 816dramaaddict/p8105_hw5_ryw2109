@@ -198,5 +198,5 @@ ggplot(city_props, aes(x = reorder(city_state, estimate), y = estimate)) +
     title = "Proportion of Unsolved Homicides by City",
     x = "City",
     y = "Proportion of Unsolved Homicides"
-  )
+  ) #*
 ```
